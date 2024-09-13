@@ -1,0 +1,65 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  email         String          @unique
+  name          String
+  password      String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  sentChats     OneToOneChat[]  @relation("sentChats")
+  receivedChats OneToOneChat[]  @relation("receivedChats")
+  groupChats    GroupChatUser[] // Reference GroupChatUser for many-to-many relation
+  GroupMessage  GroupMessage[]
+  GroupChat     GroupChat[]
+}
+
+model OneToOneChat {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  message    String
+  sentAt     DateTime @default(now())
+
+  sender   User @relation("sentChats", fields: [senderId], references: [id])
+  receiver User @relation("receivedChats", fields: [receiverId], references: [id])
+
+  @@unique([senderId, receiverId, sentAt])
+}
+
+model GroupChat {
+  id        Int             @id @default(autoincrement())
+  name      String
+  ownerId   Int
+  admin     User            @relation(fields: [ownerId], references: [id])
+  messages  GroupMessage[]
+  users     GroupChatUser[] // Create the relation to GroupChatUser
+  createdAt DateTime        @default(now())
+}
+
+model GroupMessage {
+  id       Int      @id @default(autoincrement())
+  groupId  Int
+  senderId Int
+  message  String
+  sentAt   DateTime @default(now())
+
+  group  GroupChat @relation(fields: [groupId], references: [id])
+  sender User      @relation(fields: [senderId], references: [id])
+}
+
+model GroupChatUser {
+  userId  Int
+  groupId Int
+  user    User      @relation(fields: [userId], references: [id])
+  group   GroupChat @relation(fields: [groupId], references: [id])
+
+  @@id([userId, groupId]) // Many-to-many relation with composite key
+}
